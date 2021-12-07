@@ -1,21 +1,27 @@
 import random, queue
 
-from typing import Counter
+from Physics import Utils
 from Vessel import Vessel
 from QuayCrane import QuayCrane
 from EventLog import EventLog
 
+
+
 class TerminalOperator:
+    DEBUG_MOTION_EVENT = False
+
     def __init__(self):
         self.totalQuayLength = 400
         self.vesselQueue = queue.SimpleQueue()
         self.vessel_quayCrane = {}
         self.quayCrane = []
+        
 
 
     def _handleMotionEvent(self, motionObject, motions):
-        for m in motions:
-            print(m)
+        if TerminalOperator.DEBUG_MOTION_EVENT:
+            for m in motions:
+                print(m)
 
     def addVessel(self, vessel):
         self.vesselQueue.put(vessel)
@@ -31,29 +37,41 @@ class TerminalOperator:
 
         vessel = self.vesselQueue.get()
         idleQuayCrane = self._getIdleQuayCrane()
-        if idleQuayCrane > vessel.maxQuayCrane:
+        if len(idleQuayCrane) > vessel.maxQuayCrane:
             idleQuayCrane = idleQuayCrane[0: vessel.maxQuayCrane]
 
-        # allocate quaycrane
+        # allocate quaycrane to vessel
         baysPerQc = int(vessel.bays / len(idleQuayCrane))
-        for i in range(0, idleQuayCrane):
+
+        startTime = 0
+        for i in range(0, len(idleQuayCrane)):
             fromBay = i*baysPerQc
             idleQuayCrane[i].idle = False
-            idleQuayCrane[i].drive(fromBay)
+            motions = idleQuayCrane[i].drive(startTime, fromBay)
+            if len(motions) > 0:
+                t = motions[-1].time
+                if t > startTime:
+                    startTime = t
+        qcTime = [startTime for i in range(len(idleQuayCrane))]
 
-        # while not vessel.isEmpty:
-        #     for i in range(0, idleQuayCrane):
-        #         fromBay = i*baysPerQc
-        #         toBay = (i+1)*baysPerQc
-        #         if i == len(idleQuayCrane)-1:
-        #             toBay = len(idleQuayCrane)-1
-        #         bay, row, tier = vessel.findFirstContainerInBay(fromBay, toBay)
-        #         if bay is not None:
-        #             container = vessel.removeContainer(bay, row, tier)
+        while not vessel.isEmpty:
+            for i in range(0, len(idleQuayCrane)):
+                fromBay = i*baysPerQc
+                toBay = (i+1)*baysPerQc
+                if i == len(idleQuayCrane):
+                    toBay = vessel.bays
+                bay, row, tier = vessel.findFirstContainerInBay(fromBay, toBay)
 
-        #         # free the quaycrane
-        #         else:
-        #             idleQuayCrane[i].idle = True
+                # unload the container, qc[i] unload to i_th lane
+                if bay is not None:
+                    container = vessel.removeContainer(bay, row, tier)
+                    motions = idleQuayCrane[i].unload(qcTime[i], bay, row, tier, i)
+                    qcTime[i] += motions[-1].time
+                    print(f'QC#{str(i)}\t Unload #{str(container)}\t from({str(bay)} {str(row)} {str(tier)}) Finish at {Utils.floatToString(qcTime[i])}')
+
+                # free the quaycrane
+                else:
+                    idleQuayCrane[i].idle = True
 
     def _getIdleQuayCrane(self):
         idleQuayCrane = []
@@ -67,21 +85,14 @@ class Simulator:
 
     def __init__(self):
         to = TerminalOperator()
-        qc = QuayCrane()
-        to.addQuayCrane(qc)
-        qc.unload(0,1,1,1,0)
-        # qc.drive(0, -1)
+        to.addQuayCrane(QuayCrane())
+        to.addQuayCrane(QuayCrane())
 
-        # vessel = Vessel()
-        # vessel.randomCargos(0.5)
-       
-        # terminalOperator.addVessel(vessel)
-        # terminalOperator.addQuayCrane(quayCrane)
-
+        vessel = Vessel()
+        vessel.randomCargos(0.5)
+        vessel.printStowagePlan()
+        to.addVessel(vessel)
+        to.unloadNextVessel()
 
 if __name__ == "__main__":
-    # v = Vessel()
-    # v.randomCargos(0.5)
-    # print(str(v))
-
     Simulator()

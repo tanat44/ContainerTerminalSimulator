@@ -54,8 +54,8 @@ class Vessel:
 
         aContainer = self.stowagePlan[bay][row][tier] 
         if self.stowagePlan[bay][row][tier] is not None:
-            self.stowagePlan[bay][row][tier] = None
             aContainer = self.stowagePlan[bay][row][tier] 
+            self.stowagePlan[bay][row][tier] = None
 
         # if actaully removing conntainer > update isEmpty
         isEmpty = True
@@ -79,15 +79,15 @@ class Vessel:
                 for k in range(self.tiers-1, -1, -1):
                     if self.stowagePlan[i][j][k] is not None:
                         return i, j, k
-        return None
+        return None, None, None
 
     def _randomGridPosition(self):
         bay = random.randint(0, self.bays-1)
         row = random.randint(0, self.rows-1)
         return bay, row
 
-    def __str__(self):
-        out = f'vessel{str(self.id)}\n'
+    def printStowagePlan(self):
+        out = f'Vessel id={str(self.id)}\n'
         for k in range(self.tiers-1, -1, -1):
             out += f'[ tier={str(k)} ]\n'
             for j in range(self.rows-1, -1, -1):
@@ -98,4 +98,4 @@ class Vessel:
                     else:
                         out += '- '
                 out += '\n'
-        return out
+        print(out)

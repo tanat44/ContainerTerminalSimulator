@@ -18,6 +18,7 @@ class QuayCrane:
     BOOM_REACH = 5              # multiple of BOX_WIDTH      
     BOOM_LANE_GAP = 2           # ROW_4 ROW_3 ROW_2 ROW_1 ROW_0 QUAY QUAY LANE_0 LANE_1 LANE_2 LANE_3 LANE_4
     LANE = 5                    # ------------------------------------------ 0 +++++++++++++++++++++++++++++
+    DEBUG_MOVE_LOGIC = False
 
     def __init__(self):
         self.state = MotionState3D(0)           # x = translate along the quay
@@ -34,13 +35,17 @@ class QuayCrane:
         time = startTime
         motions = []
 
-        print('moveToship')
+        if QuayCrane.DEBUG_MOVE_LOGIC:
+            print('moveToship')
+
         # pickup box
         motions += self.moveToShip(time, bay, row, tier)
         if len(motions) > 0:
             time = motions[-1].time
 
-        print('moveToLand')
+        if QuayCrane.DEBUG_MOVE_LOGIC:
+            print('moveToLand')
+            
         # drop off box
         motions += self.moveToLand(time, lane)
         if len(motions) > 0:
