@@ -4,112 +4,192 @@ using UnityEngine;
 
 public class QuayCraneController : MonoBehaviour
 {
-    GameObject spreader;
-    GameObject spreaderWires;
-    GameObject beam;
+    const int INITIAL_REACH = 5;
+    const int INITIAL_HEIGHT = 8;
 
+    [Header("QC Size")]
+    [Range(3, 10)]
+    public int maxHeight;
+
+
+    [Range(3, 10)]
+    public int maxReach = INITIAL_REACH;
+    Vector3 midFrameOriginalScale;
+    
+
+    [Header("Manual control")]
+    public bool isManual = true;
     // spreader
-    Vector3 spreaderPosition;
     public float spreaderSpeed = 0.02f;
+    Vector3 spreaderPosition;
+    Vector3 spreaderOriginalPosition;
 
     // wire
-    Vector3 spreaderWirePosition;
-    float originalWireLength;
-    Vector3 originalWireScale;
-    float originalWireY;
+    float wireOriginalLength;
+    Vector3 wireOriginalScale;
+    Vector3 wireSpreaderOriginalDistance;
 
     // beam
-    Vector3 beamAngle;
-    public float beamRotationSpeed = 0.02f;
+    Vector3 boomAngle;
+    public float boomRotationSpeed = 0.02f;
+    Vector3 boomOriginalScale;
 
     // crane
     Vector3 cranePosition;
     public float craneSpeed = 0.01f;
+
+    GameObject spreader;
+    GameObject wire;
+    GameObject boom;
+    GameObject middleFrame;
+    GameObject topFrame;
+    GameObject topBackFrame;
+
+    bool ready = false;
     void Start()
     {
         spreader = transform.Find("spreader").gameObject;
-        spreaderWires = transform.Find("wires").gameObject;
-        beam = transform.Find("beam").gameObject;
+        wire = transform.Find("wires").gameObject;
+        boom = transform.Find("beam").gameObject;
+        middleFrame = transform.Find("qcMid").gameObject;
+        topFrame = transform.Find("qcTop").gameObject;
+        topBackFrame = transform.Find("qcTopBack").gameObject;
 
         // spreader
-        spreaderPosition = spreader.transform.localPosition;
+        spreaderPosition = Vector3.zero;
+        spreaderOriginalPosition = spreader.transform.localPosition;
 
         // wire
-        spreaderWirePosition = spreaderWires.transform.localPosition;
-        originalWireScale = spreaderWires.transform.localScale;
-        originalWireLength = spreaderWires.transform.position.y - spreader.transform.position.y;
-        originalWireY = spreaderWires.transform.position.y;
+        wireOriginalScale = wire.transform.localScale;
+        wireOriginalLength = topFrame.transform.localPosition.y - spreaderOriginalPosition.y;
+        wireSpreaderOriginalDistance = wire.transform.localPosition - spreaderOriginalPosition;
 
         // beam
-        beamAngle = beam.transform.localRotation.eulerAngles;
+        boomAngle = boom.transform.localRotation.eulerAngles;
+        boomOriginalScale = boom.transform.localScale;
 
         // crane
         cranePosition = gameObject.transform.position;
+
+        // resize
+        midFrameOriginalScale = middleFrame.transform.localScale;
+        ready = true;
+    }
+
+    public void ResizeQc(int newHeight, int newReach)
+    {
+        if (!ready)
+            return;
+       
+        // mid frame
+        Vector3 newMidFrameScale = midFrameOriginalScale;
+        newMidFrameScale.z *= (float) newHeight / INITIAL_HEIGHT;
+        middleFrame.transform.localScale = newMidFrameScale;
+        Renderer r = middleFrame.GetComponent<Renderer>();
+        Bounds midFrameBound = r.bounds;
+
+        // boom
+        Vector3 newBoomScale = boomOriginalScale;
+        newBoomScale.y *= (float) newReach / INITIAL_REACH;
+        boom.transform.localScale = newBoomScale;
+        Vector3 newBoomPos = boom.transform.localPosition;
+        newBoomPos.y = midFrameBound.max.y;
+        boom.transform.localPosition = newBoomPos;
+
+        // top frame
+        Vector3 newTopFramePos = topFrame.transform.localPosition;
+        newTopFramePos.y = midFrameBound.max.y;
+        topFrame.transform.localPosition = newTopFramePos;
+
+        // top back frame
+        Vector3 newTopBackFramePos = topBackFrame.transform.localPosition;
+        newTopBackFramePos.y = midFrameBound.max.y;
+        topBackFrame.transform.localPosition = newTopBackFramePos;
+
+        maxHeight = newHeight;
+        maxReach = newReach;
     }
 
     void Update()
     {
-        if (Input.GetKey(KeyCode.W))
+        if (isManual)
         {
-            spreaderPosition.y += spreaderSpeed;
-        }
-        if (Input.GetKey(KeyCode.S))
-        {
-            spreaderPosition.y -= spreaderSpeed;
-        }
-        if (Input.GetKey(KeyCode.D))
-        {
-            spreaderPosition.z -= spreaderSpeed;
-            spreaderWirePosition.z -= spreaderSpeed;
-        }
-        if (Input.GetKey(KeyCode.A))
-        {
-            spreaderPosition.z += spreaderSpeed;
-            spreaderWirePosition.z += spreaderSpeed;
-        }
-        if (Input.GetKey(KeyCode.R))
-        {
-            beamAngle.x += beamRotationSpeed;
-            if (beamAngle.x < 0)
+            if (Input.GetKey(KeyCode.W))
             {
-                beamAngle.x = 0;
+                spreaderPosition.y += spreaderSpeed;
+            }
+            if (Input.GetKey(KeyCode.S))
+            {
+                spreaderPosition.y -= spreaderSpeed;
+            }
+            if (Input.GetKey(KeyCode.D))
+            {
+                spreaderPosition.z -= spreaderSpeed;
+            }
+            if (Input.GetKey(KeyCode.A))
+            {
+                spreaderPosition.z += spreaderSpeed;
+            }
+            if (Input.GetKey(KeyCode.R))
+            {
+                boomAngle.x += boomRotationSpeed;
+                if (boomAngle.x < 0)
+                {
+                    boomAngle.x = 0;
+                }
+            }
+            if (Input.GetKey(KeyCode.F))
+            {
+                boomAngle.x -= boomRotationSpeed;
+                if (boomAngle.x > 90)
+                {
+                    boomAngle.x = 90;
+                }
+            }
+
+            if (Input.GetKey(KeyCode.X))
+            {
+                cranePosition += craneSpeed * gameObject.transform.right;
+            }
+            if (Input.GetKey(KeyCode.Z))
+            {
+                cranePosition -= craneSpeed * gameObject.transform.right;
+            }
+
+            if (Input.GetKey(KeyCode.LeftControl))
+            {
+                ResizeQc(6, 6);
             }
         }
-        if (Input.GetKey(KeyCode.F))
-        {
-            beamAngle.x -= beamRotationSpeed;
-            if (beamAngle.x > 90)
-            {
-                beamAngle.x = 90;
-            }
-        }
 
-        if (Input.GetKey(KeyCode.X))
-        {
-            cranePosition += craneSpeed * gameObject.transform.right;
-        }
-        if (Input.GetKey(KeyCode.Z))
-        {
-            cranePosition -= craneSpeed * gameObject.transform.right;
-        }
-
-        // spreader
-        spreader.transform.localPosition = Vector3.Lerp(spreader.transform.localPosition, spreaderPosition, Time.time);
-
-        // wire
-        Vector3 newWirePosition = spreaderWires.transform.localPosition;
-        spreaderWires.transform.localPosition = Vector3.Lerp(spreaderWires.transform.localPosition, spreaderWirePosition, Time.time);
-        float newWireLength = originalWireY - spreader.transform.position.y;
-        float newScale = originalWireScale.z / originalWireLength * newWireLength;
-        Vector3 newWireScale = originalWireScale;
-        newWireScale.z = newScale;
-        spreaderWires.transform.localScale = newWireScale;
+        MoveSpreader(spreaderPosition);
 
         // beam
-        beam.transform.localRotation = Quaternion.Lerp(beam.transform.localRotation, Quaternion.Euler(beamAngle), Time.time);
+        boom.transform.localRotation = Quaternion.Lerp(boom.transform.localRotation, Quaternion.Euler(boomAngle), Time.time);
 
         // crane
         gameObject.transform.position = Vector3.Lerp(gameObject.transform.position, cranePosition, Time.time);
-        
+
+    }
+
+    void MoveSpreader(Vector3 newPosition)
+    {
+        // spreader pos
+        Vector3 newSpreaderPos = newPosition + spreaderOriginalPosition;
+        spreader.transform.localPosition = Vector3.Lerp(spreader.transform.localPosition, newSpreaderPos, Time.time);
+
+        // wire pos
+        wire.transform.localPosition = Vector3.Lerp(wire.transform.localPosition, newSpreaderPos + wireSpreaderOriginalDistance, Time.time);
+
+        // wire scale
+        float newLength = topFrame.transform.localPosition.y - newSpreaderPos.y;
+        Vector3 newWireScale = wireOriginalScale;
+        newWireScale.z = newLength / wireOriginalLength * wireOriginalScale.z;
+        wire.transform.localScale = newWireScale;
+    }
+
+    private void OnValidate()
+    {
+        ResizeQc(maxHeight, maxReach);
     }
 }
